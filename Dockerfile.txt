@@ -1,23 +1,45 @@
-# Dockerfile
+FROM amazonlinux:2023
 
-FROM php:8.1-apache
+# Install Apache, PHP, and required extensions
+RUN yum update -y && \
+    yum install -y \
+    httpd \
+    php \
+    php-mysqli \
+    php-pdo \
+    php-pdo_mysql \
+    php-intl \
+    php-zip \
+    php-xml \
+    php-gd \
+    php-mbstring \
+    php-opcache \
+    php-soap \
+    php-json \
+    php-cli \
+    php-common \
+    unzip \
+    git \
+    tar && \
+    yum clean all
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    git zip unzip libpng-dev libjpeg-dev libfreetype6-dev \
-    libxml2-dev libzip-dev libonig-dev libicu-dev \
-    && docker-php-ext-install mysqli pdo pdo_mysql intl zip xml gd \
-    && docker-php-ext-enable mysqli
-
-# Enable Apache rewrite module
-RUN a2enmod rewrite
+# Enable Apache configuration
+RUN echo "ServerName localhost" >> /etc/httpd/conf/httpd.conf && \
+    sed -i '/^DirectoryIndex/s/index.html/index.php index.html/' /etc/httpd/conf/httpd.conf && \
+    echo "<?php phpinfo(); ?>" > /var/www/html/info.php
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy Moodle source code (copied via volume or local build)
+# Copy Moodle source
 COPY ./moodle /var/www/html
 
-# Permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+# Set file permissions
+RUN chown -R apache:apache /var/www/html && \
+    chmod -R 755 /var/www/html
+
+# Expose port
+EXPOSE 80
+
+# Start Apache in foreground
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
